@@ -11,6 +11,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 
+import java.util.regex.*;
+
 public class PastebinPoster {
     private static final int CONNECT_TIMEOUT = 5000;
     private static final int READ_TIMEOUT = 5000;
@@ -42,24 +44,18 @@ public class PastebinPoster {
             InputStream in = null;
             
             try {
-                URL url = new URL("http://pastebin.com/api/api_post.php");
+                URL url = new URL("http://hastebin.prwn.net/documents");
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setConnectTimeout(CONNECT_TIMEOUT);
                 conn.setReadTimeout(READ_TIMEOUT);
                 conn.setRequestMethod("POST");
-                conn.addRequestProperty("Content-type", "application/x-www-form-urlencoded");
+                conn.addRequestProperty("Content-type", "text/plain");
                 conn.setInstanceFollowRedirects(false);
                 conn.setDoOutput(true);
                 out = conn.getOutputStream();
                 
-                out.write(("api_option=paste"
-                        + "&api_dev_key=" + URLEncoder.encode("4867eae74c6990dbdef07c543cf8f805", "utf-8")
-                        + "&api_paste_code=" + URLEncoder.encode(code, "utf-8")
-                        + "&api_paste_private=" + URLEncoder.encode("0", "utf-8")
-                        + "&api_paste_name=" + URLEncoder.encode("", "utf-8")
-                        + "&api_paste_expire_date=" + URLEncoder.encode("1D", "utf-8")
-                        + "&api_paste_format=" + URLEncoder.encode("text", "utf-8")
-                        + "&api_user_key=" + URLEncoder.encode("", "utf-8")).getBytes());
+                // code to POST
+                out.write(code.getBytes());
                 out.flush();
                 out.close();
                 
@@ -75,9 +71,14 @@ public class PastebinPoster {
                     reader.close();
                     
                     String result = response.toString().trim();
-                    
-                    if (result.matches("^https?://.*")) {
-                        callback.handleSuccess(result.trim());
+                    // {"key":"abcde"}
+                    if (result.matches("^.*key.*")) {
+                        Pattern pattern = Pattern.compile("\"key\":\"(.*?)\"");
+                        Matcher key = pattern.matcher(result);
+                        while (key.find()) {
+                            callback.handleSuccess("http://hastebin.prwn.net/" + key.group(1));
+                        }
+                        //callback.handleSuccess(result.trim());
                     } else {
                         String err = result.trim();
                         if (err.length() > 100) {
